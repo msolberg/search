@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+
+# Search my documents using recoll
+import getopt, sys, recoll
+
+def usage():
+    print """
+Usage:
+search [query]
+"""
+
+def sanitize_args(args):
+    sanitized_args = []
+    for arg in args:
+        # Pull out any double quotes
+        sanitized_arg = arg.strip('"')
+        sanitized_args.append(sanitized_arg)
+    return sanitized_args
+
+def main():
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "h")
+    except getopt.GetoptError, err:
+        print str(err)
+        usage()
+        sys.exit(2)
+    
+    for o, a in opts:
+        if o in ("-h"):
+            usage()
+            sys.exit(2)
+    
+    if len(args) < 1:
+        usage()
+        sys.exit(2)
+    
+    try:
+        db = recoll.connect()
+    except (Exception, e):
+        print "Couldn't connect to database:"
+        print str(e.message)
+    
+    db.setAbstractParams(maxchars=160, contextwords=8)
+    
+    query_tokens = sanitize_args(args)
+    query_string = " ".join(query_tokens)
+    
+    query = db.query()
+    nres = query.execute(query_string)
+    print "Result count: ", nres
+    for i in range(nres):
+        doc = query.fetchone()
+        path = getattr(doc, 'url').encode('utf-8')
+        print path[22:]
+        abs = db.makeDocAbstract(doc, query).encode('utf-8')
+        print abs
+        print
+    
+
+if __name__ == "__main__":
+   main()
